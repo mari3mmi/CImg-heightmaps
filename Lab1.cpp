@@ -29,7 +29,7 @@ void MouseCallback(GLFWwindow *window, double xPos, double yPos);
 void DoMovement();
 
 // Camera
-Camera  camera(glm::vec3(0.0f, 50.0f, 3.0f));
+Camera  camera(glm::vec3(12.0f, 30.0f, 20.0f));
 GLfloat lastX = WIDTH / 2.0;
 GLfloat lastY = HEIGHT / 2.0;
 bool keys[1024];
@@ -37,7 +37,7 @@ bool firstMouse = true;
 
 GLfloat deltaTime = 0.0f;
 GLfloat lastFrame = 0.0f;
-
+glm::mat4 model= glm::mat4(1.0f);
 
 // The MAIN function, from here we start the application and run the game loop
 int main()
@@ -52,7 +52,7 @@ int main()
 	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
 	// Create a GLFWwindow object that we can use for GLFW's functions
-	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "Triangle", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, "COMP371_A1", nullptr, nullptr);
 	if (window == nullptr)
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;
@@ -80,11 +80,14 @@ int main()
 		return -1;
 	}
 
-	// Define the viewport dimensions
-	int width, height;
-	glfwGetFramebufferSize(window, &width, &height);
+	glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 
-	glViewport(0, 0, width, height);
+	// Setup some OpenGL options
+	glEnable(GL_DEPTH_TEST);
+
+	// enable alpha support
+	//glEnable(GL_BLEND);
+	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	// Build and compile our shader program
 	// Vertex shader
@@ -105,17 +108,6 @@ int main()
 		getchar();
 		exit(-1);
 	}
-
-	// Define the viewport dimensions
-	glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-
-	// Setup some OpenGL options
-	glEnable(GL_DEPTH_TEST);
-
-	// enable alpha support
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
 
 	// Read the Fragment Shader code from the file
 	string fragment_shader_path = "fragment.shader";
@@ -181,6 +173,7 @@ int main()
 	std::cout << image.height() << "   " << image.width() << "colors" << image.spectrum() << std::endl;
 
 	std::vector<GLfloat>vertexData;
+	std::vector<GLfloat>colorData;
 	for (int i = 0; i < mapHeight; i++)
 	{
 		for (int j = 0; j < mapWidth; j++)
@@ -191,13 +184,27 @@ int main()
 		}
 	}
 
-	int size = mapWidth*mapHeight;
+	for (int i = 0; i < mapHeight; i++)
+	{
+		for (int j = 0; j < mapWidth; j++)
+		{
+			colorData.push_back((GLfloat)j); // X-Axis
+			colorData.push_back((GLfloat)image(j, i, 0, 0)); // Y-Axis
+			colorData.push_back((GLfloat)i); // Z-Axis
+		}
+	}
 
+	const int size = mapWidth*mapHeight;
 	GLfloat vertices[300*300]; //hard coding the size of the array for now
-
+	GLfloat colors[300 * 300];
 	for (int i = 0; i < size; i++)
 	{
 		vertices[i] = vertexData.at(i);
+	}
+
+	for (int i = 0; i < size; i++)
+	{
+		colors[i] = colorData.at(i);
 	}
 
 	// Initialize VAO, and VBOs
@@ -219,10 +226,10 @@ int main()
 	
 	//Bind Color buffer
 	glBindBuffer(GL_ARRAY_BUFFER, VBOColor);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(colors), colors, GL_STATIC_DRAW);
 
 	// Connecting X, Y, and Z to shader
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (GLvoid*)0);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
 	glEnableVertexAttribArray(0);
 
 	// Unbind VBOColor
@@ -249,8 +256,7 @@ int main()
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		// Camera and View transformation
-		glm::mat4 model;
-		model = glm::mat4(1.0f);
+
 
 		glm::mat4 projection;
 		projection = glm::perspective(camera.GetZoom(), (GLfloat)SCREEN_WIDTH / (GLfloat)SCREEN_HEIGHT, 0.1f, 1000.0f);
@@ -269,8 +275,13 @@ int main()
 		glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
 		glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
 
+
 		glBindVertexArray(VAO);
-		glDrawArrays(GL_LINE_LOOP, 0, sizeof(vertices));
+		glEnableVertexAttribArray(0);
+		glEnableVertexAttribArray(1);
+		glDrawArrays(GL_LINES, 0, sizeof(vertices));
+		glDisableVertexAttribArray(0);
+		glDisableVertexAttribArray(1);
 		glBindVertexArray(0);
 
 		// Swap the screen buffers
@@ -286,25 +297,54 @@ int main()
 void DoMovement()
 {
 	// Camera controls
-	if (keys[GLFW_KEY_W] || keys[GLFW_KEY_UP])
+	if (keys[GLFW_KEY_W])
 	{
 		camera.ProcessKeyboard(FORWARD, deltaTime);
 	}
 
-	if (keys[GLFW_KEY_S] || keys[GLFW_KEY_DOWN])
+	if (keys[GLFW_KEY_S])
 	{
 		camera.ProcessKeyboard(BACKWARD, deltaTime);
 
 	}
 
-	if (keys[GLFW_KEY_A] || keys[GLFW_KEY_LEFT])
+	if (keys[GLFW_KEY_A])
 	{
 		camera.ProcessKeyboard(LEFT, deltaTime);
 	}
 
-	if (keys[GLFW_KEY_D] || keys[GLFW_KEY_RIGHT])
+	if (keys[GLFW_KEY_D])
 	{
 		camera.ProcessKeyboard(RIGHT, deltaTime);
+	}
+	if (keys[GLFW_KEY_UP]){
+		model = glm::translate(model, glm::vec3(model[0][0], model[1][1], model[2][2]));
+		model = glm::rotate(model, 0.05f, glm::vec3(1.0f, 0.0f, 0.0f));
+		model = glm::translate(model, glm::vec3(-model[0][0], -model[1][1], -model[2][2]));
+	}
+	if (keys[GLFW_KEY_DOWN]){
+		model = glm::translate(model, glm::vec3(model[0][0], model[1][1], model[2][2]));
+		model = glm::rotate(model, 0.05f, glm::vec3(-1.0f, 0.0f, 0.0f));
+		model = glm::translate(model, glm::vec3(-model[0][0], -model[1][1], -model[2][2]));
+	}
+	if (keys[GLFW_KEY_LEFT]){
+		model = glm::translate(model, glm::vec3(model[0][0], model[1][1], model[2][2]));
+		model = glm::rotate(model, 0.05f, glm::vec3(0.0f, 1.0f, 0.0f));
+		model = glm::translate(model, glm::vec3(-model[0][0], -model[1][1], -model[2][2]));
+	}
+	if (keys[GLFW_KEY_RIGHT]){
+		model = glm::translate(model, glm::vec3(model[0][0], model[1][1], model[2][2]));
+		model = glm::rotate(model, 0.05f, glm::vec3(0.0f, -1.0f, 0.0f));
+		model = glm::translate(model, glm::vec3(-model[0][0], -model[1][1], -model[2][2]));
+	}
+	if (keys[GLFW_KEY_P]){
+		glPolygonMode(GL_FRONT_AND_BACK, GL_POINT);
+	}
+	if (keys[GLFW_KEY_T]){
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	}
+	if (keys[GLFW_KEY_L]){
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	}
 }
 
