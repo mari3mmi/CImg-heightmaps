@@ -37,7 +37,7 @@ bool firstMouse = true;
 
 GLfloat deltaTime = 0.0f;
 GLfloat lastFrame = 0.0f;
-glm::mat4 model= glm::mat4(1.0f);
+glm::mat4 model, translate, rotatemat, scale  = glm::mat4(1.0f);
 
 // The MAIN function, from here we start the application and run the game loop
 int main()
@@ -194,50 +194,62 @@ int main()
 		}
 	}
 
-	const int size = mapWidth*mapHeight;
-	GLfloat vertices[300*300]; //hard coding the size of the array for now
-	GLfloat colors[300 * 300];
-	for (int i = 0; i < size; i++)
+	vector<GLuint>vertexIndices;
+	for (int i = 0; i < mapHeight - 1; i++)
 	{
-		vertices[i] = vertexData.at(i);
-	}
+		for (int j = 0; j < mapWidth - 1; j++)
+		{
+			int index = (mapWidth * j) + i;
 
-	for (int i = 0; i < size; i++)
-	{
-		colors[i] = colorData.at(i);
+			// Top triangle
+			vertexIndices.push_back(index);                // V0
+			vertexIndices.push_back(index + mapWidth + 1); // V3
+			vertexIndices.push_back(index + 1);            // V1
+
+														   // Bottom triangle
+			vertexIndices.push_back(index);                // V0
+			vertexIndices.push_back(index + mapWidth);     // V2
+			vertexIndices.push_back(index + mapWidth + 1); // V3
+		}
 	}
 
 	// Initialize VAO, and VBOs
-	GLuint VAO, VBO, VBOColor;
+	GLuint VAO, VBO, VBOColor, EBO;
 	glGenVertexArrays(1, &VAO);
 	glGenBuffers(1, &VBO);
 	glGenBuffers(1, &VBOColor);
+	glGenBuffers(1, &EBO);
 	// Bind VAO
 	glBindVertexArray(VAO);
 
 	// Bind and implement VBO for vertex positions
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, vertexData.size() * sizeof(GLfloat), &vertexData.front(), GL_STATIC_DRAW);
+
+	// Bind and implement EBO for indices
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, vertexIndices.size() * sizeof(GLfloat), &vertexIndices.front(), GL_STATIC_DRAW);
 
 	// Connecting X, Y, and Z to shader
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)0);
 	glEnableVertexAttribArray(0);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	
+
 	//Bind Color buffer
 	glBindBuffer(GL_ARRAY_BUFFER, VBOColor);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(colors), colors, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, colorData.size()* sizeof(GLfloat), &colorData.front(), GL_STATIC_DRAW);
 
 	// Connecting X, Y, and Z to shader
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
-	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
 
 	// Unbind VBOColor
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 	// Unbind VAO
 	glBindVertexArray(0);
-
+	model = glm::translate(model, glm::vec3(-mapWidth / 2, -mapHeight / 2, 0.0));
+	
 	// Game loop
 	while (!glfwWindowShouldClose(window))
 	{
@@ -257,7 +269,7 @@ int main()
 
 		// Camera and View transformation
 
-
+		model = translate * rotatemat * scale;
 		glm::mat4 projection;
 		projection = glm::perspective(camera.GetZoom(), (GLfloat)SCREEN_WIDTH / (GLfloat)SCREEN_HEIGHT, 0.1f, 1000.0f);
 
@@ -277,11 +289,8 @@ int main()
 
 
 		glBindVertexArray(VAO);
-		glEnableVertexAttribArray(0);
-		glEnableVertexAttribArray(1);
-		glDrawArrays(GL_LINES, 0, sizeof(vertices));
-		glDisableVertexAttribArray(0);
-		glDisableVertexAttribArray(1);
+		//glDrawArrays(GL_TRIANGLES, 0, vertexData.size());
+		glDrawElements(GL_TRIANGLES, vertexIndices.size(), GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
 
 		// Swap the screen buffers
@@ -317,33 +326,31 @@ void DoMovement()
 	{
 		camera.ProcessKeyboard(RIGHT, deltaTime);
 	}
-	if (keys[GLFW_KEY_UP]){
-		model = glm::translate(model, glm::vec3(model[0][0], model[1][1], model[2][2]));
-		model = glm::rotate(model, 0.05f, glm::vec3(1.0f, 0.0f, 0.0f));
-		model = glm::translate(model, glm::vec3(-model[0][0], -model[1][1], -model[2][2]));
+	if (keys[GLFW_KEY_UP]) {
+		rotatemat = glm::rotate(model, 0.05f, glm::vec3(1.0f, 0.0f, 0.0f));
 	}
-	if (keys[GLFW_KEY_DOWN]){
-		model = glm::translate(model, glm::vec3(model[0][0], model[1][1], model[2][2]));
-		model = glm::rotate(model, 0.05f, glm::vec3(-1.0f, 0.0f, 0.0f));
-		model = glm::translate(model, glm::vec3(-model[0][0], -model[1][1], -model[2][2]));
+	if (keys[GLFW_KEY_DOWN]) {
+		rotatemat = glm::rotate(model, 0.05f, glm::vec3(-1.0f, 0.0f, 0.0f));
 	}
-	if (keys[GLFW_KEY_LEFT]){
-		model = glm::translate(model, glm::vec3(model[0][0], model[1][1], model[2][2]));
-		model = glm::rotate(model, 0.05f, glm::vec3(0.0f, 1.0f, 0.0f));
-		model = glm::translate(model, glm::vec3(-model[0][0], -model[1][1], -model[2][2]));
+	if (keys[GLFW_KEY_LEFT]) {
+		rotatemat = glm::rotate(model, 0.05f, glm::vec3(0.0f, 1.0f, 0.0f));
 	}
-	if (keys[GLFW_KEY_RIGHT]){
-		model = glm::translate(model, glm::vec3(model[0][0], model[1][1], model[2][2]));
-		model = glm::rotate(model, 0.05f, glm::vec3(0.0f, -1.0f, 0.0f));
-		model = glm::translate(model, glm::vec3(-model[0][0], -model[1][1], -model[2][2]));
+	if (keys[GLFW_KEY_RIGHT]) {
+		rotatemat = glm::rotate(model, 0.05f, glm::vec3(0.0f, -1.0f, 0.0f));
 	}
-	if (keys[GLFW_KEY_P]){
+	if (keys[GLFW_KEY_U]) {
+		scale = glm::scale(scale, glm::vec3(0.5f));
+	}
+	if (keys[GLFW_KEY_J]) {
+		scale = glm::scale(scale, glm::vec3(0.5f));
+	}
+	if (keys[GLFW_KEY_P]) {
 		glPolygonMode(GL_FRONT_AND_BACK, GL_POINT);
 	}
-	if (keys[GLFW_KEY_T]){
+	if (keys[GLFW_KEY_T]) {
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	}
-	if (keys[GLFW_KEY_L]){
+	if (keys[GLFW_KEY_L]) {
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	}
 }
