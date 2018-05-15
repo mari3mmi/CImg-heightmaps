@@ -15,6 +15,7 @@
 #include <glm.hpp>
 #include <gtc\matrix_transform.hpp>
 #include <gtc\type_ptr.hpp>
+#define STP 0.5f
 using namespace std;
 
 
@@ -29,7 +30,7 @@ void MouseCallback(GLFWwindow *window, double xPos, double yPos);
 void DoMovement();
 
 // Camera
-Camera  camera(glm::vec3(12.0f, 30.0f, 20.0f));
+Camera  camera(glm::vec3(0.0f, 50.0f, 0.0f));
 GLfloat lastX = WIDTH / 2.0;
 GLfloat lastY = HEIGHT / 2.0;
 bool keys[1024];
@@ -37,8 +38,10 @@ bool firstMouse = true;
 
 GLfloat deltaTime = 0.0f;
 GLfloat lastFrame = 0.0f;
-glm::mat4 model, translate, rotatemat, scale  = glm::mat4(1.0f);
-
+float ry = 0.0f;
+float rx = 0.0f;
+int mapHeight, mapWidth;
+glm::mat4 model;
 // The MAIN function, from here we start the application and run the game loop
 int main()
 {
@@ -166,10 +169,10 @@ int main()
 	glDeleteShader(fragmentShader);
 
 	glUseProgram(shaderProgram);
-	cimg_library::CImg<unsigned char> image("heightmap.bmp");
+	cimg_library::CImg<unsigned char> image("heightmap_big.bmp");
 	cimg_library::CImgDisplay main_disp(image, "image");
-	int mapHeight = image.height();
-	int mapWidth = image.width();
+	mapHeight = image.height();
+	mapWidth = image.width();
 	std::cout << image.height() << "   " << image.width() << "colors" << image.spectrum() << std::endl;
 
 	std::vector<GLfloat>vertexData;
@@ -248,8 +251,9 @@ int main()
 
 	// Unbind VAO
 	glBindVertexArray(0);
-	model = glm::translate(model, glm::vec3(-mapWidth / 2, -mapHeight / 2, 0.0));
+	//model = glm::translate(model, glm::vec3(-mapWidth/ 2, -255/2,- mapHeight / 2));
 	
+	model = glm::mat4(1.0f);
 	// Game loop
 	while (!glfwWindowShouldClose(window))
 	{
@@ -267,9 +271,8 @@ int main()
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		// Camera and View transformation
 
-		model = translate * rotatemat * scale;
+		// Camera and View transformation
 		glm::mat4 projection;
 		projection = glm::perspective(camera.GetZoom(), (GLfloat)SCREEN_WIDTH / (GLfloat)SCREEN_HEIGHT, 0.1f, 1000.0f);
 
@@ -286,7 +289,6 @@ int main()
 		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 		glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
 		glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
-
 
 		glBindVertexArray(VAO);
 		//glDrawArrays(GL_TRIANGLES, 0, vertexData.size());
@@ -327,22 +329,27 @@ void DoMovement()
 		camera.ProcessKeyboard(RIGHT, deltaTime);
 	}
 	if (keys[GLFW_KEY_UP]) {
-		rotatemat = glm::rotate(model, 0.05f, glm::vec3(1.0f, 0.0f, 0.0f));
+		model = glm::translate(model, glm::vec3((mapWidth) / 2, 255 / 2, (mapHeight) / 2));
+		model = glm::rotate(model, 0.025f, glm::vec3(1.0f, 0.0f, 0.f));
+		model = glm::translate(model, glm::vec3(-(mapWidth) / 2, -255 / 2, -(mapHeight) / 2));
 	}
 	if (keys[GLFW_KEY_DOWN]) {
-		rotatemat = glm::rotate(model, 0.05f, glm::vec3(-1.0f, 0.0f, 0.0f));
+		model = glm::translate(model, glm::vec3((mapWidth) / 2, 255 / 2, (mapHeight) / 2));
+		model = glm::rotate(model, 0.025f, glm::vec3(-1.0f, 0.0f, 0.f));
+		model = glm::translate(model, glm::vec3(-(mapWidth) / 2, -255 / 2, -(mapHeight) / 2));
 	}
 	if (keys[GLFW_KEY_LEFT]) {
-		rotatemat = glm::rotate(model, 0.05f, glm::vec3(0.0f, 1.0f, 0.0f));
+		model = glm::translate(model, glm::vec3((mapWidth) / 2, 255 / 2, (mapHeight) / 2));
+		model = glm::rotate(model, 0.025f, glm::vec3(0.0f, -1.0f, 0.f));
+		model = glm::translate(model, glm::vec3(-(mapWidth) / 2, -255 / 2, -(mapHeight) / 2));
 	}
 	if (keys[GLFW_KEY_RIGHT]) {
-		rotatemat = glm::rotate(model, 0.05f, glm::vec3(0.0f, -1.0f, 0.0f));
+		model = glm::translate(model, glm::vec3((mapWidth) / 2, 255 / 2, (mapHeight) / 2));
+		model = glm::rotate(model, 0.025f, glm::vec3(0.0f, 1.0f, 0.f));
+		model = glm::translate(model, glm::vec3(-(mapWidth) / 2, -255 / 2, -(mapHeight) / 2));
 	}
-	if (keys[GLFW_KEY_U]) {
-		scale = glm::scale(scale, glm::vec3(0.5f));
-	}
-	if (keys[GLFW_KEY_J]) {
-		scale = glm::scale(scale, glm::vec3(0.5f));
+	if (keys[GLFW_KEY_TAB]) {
+		model = glm::mat4(1.0f);
 	}
 	if (keys[GLFW_KEY_P]) {
 		glPolygonMode(GL_FRONT_AND_BACK, GL_POINT);
