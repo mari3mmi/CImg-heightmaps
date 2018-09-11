@@ -1,2 +1,2 @@
-# 371_SUMMER_A1
+# Loading a height map with CImg
 computer graphics assignment: loading a heightmap with CImg
